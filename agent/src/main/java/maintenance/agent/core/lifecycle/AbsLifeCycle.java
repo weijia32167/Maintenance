@@ -1,7 +1,6 @@
 package maintenance.agent.core.lifecycle;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -19,12 +18,8 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 
 	protected volatile LifeCycleState state = LifeCycleState.NEW;
 	
-	protected LifeCycleEventSupport eventSupport = new LifeCycleEventSupport();
+	protected EventSupport<ILifeCycle.Listener> eventSupport = new EventSupport<ILifeCycle.Listener>();
 
-	protected boolean needJMXSupport;
-	
-	protected ExecutorService executor = ForkJoinPool.commonPool();
-	
 	public AbsLifeCycle() {
 		super();
 	}
@@ -43,7 +38,7 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 				long endTime = System.currentTimeMillis();
 				notifyListeners(new LifeCycleEvent(this,LifeCycleState.INITING,LifeCycleState.INITED,(endTime-startTime)));
 			}  else if (state.equals(LifeCycleState.INITING) || state.equals(LifeCycleState.INITED)) {
-				return;
+				init();
 			} else {
 				LifeCycleException.throwException(null,"Current LifeCycle State is :" + state.toString());
 			}
@@ -185,7 +180,6 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 	}
 
 	/**********************EventSupport proxy method***********************************/
-	
 	public void addListener(ILifeCycle.Listener listener){
 		eventSupport.addListener(listener);
 	}
@@ -195,15 +189,17 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 	}
 	
 	public void notifyListeners(LifeCycleEvent lifeCycleEvent){
-		CompletableFuture.runAsync(()->{eventSupport.notifyListeners(lifeCycleEvent);}, executor);
+		CompletableFuture.runAsync(()->{eventSupport.notifyListeners(lifeCycleEvent);}, ForkJoinPool.commonPool());
 	}
 
+
 	/**********************getters and setters***********************************/
-	public LifeCycleEventSupport getEventSupport() {
+
+	public EventSupport<ILifeCycle.Listener> getEventSupport() {
 		return eventSupport;
 	}
 
-	public void setEventSupport(LifeCycleEventSupport eventSupport) {
+	public void setEventSupport(EventSupport<ILifeCycle.Listener> eventSupport) {
 		this.eventSupport = eventSupport;
 	}
 	

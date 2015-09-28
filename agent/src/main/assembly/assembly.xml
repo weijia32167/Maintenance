@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<assembly  
+    xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0"  
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
+    xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 
+    					http://maven.apache.org/xsd/assembly-1.1.0.xsd">  
+    <id>bin</id> 
+    <formats>  
+        <format>zip</format>  
+    </formats>  
+    <includeBaseDirectory>false</includeBaseDirectory>
+	
+     <fileSets>  
+        <fileSet>  
+            <directory>${project.build.Directory}\appassembler\bin</directory> 
+            <outputDirectory>\bin</outputDirectory>  
+        </fileSet>
+        <fileSet>  
+            <directory>${project.build.Directory}\appassembler\conf</directory>
+            <outputDirectory>\conf</outputDirectory>  
+        </fileSet>
+        <fileSet>  
+            <directory>${project.build.Directory}\appassembler\lib</directory>
+            <outputDirectory>\lib</outputDirectory>  
+        </fileSet>
+    </fileSets>
+    
+	<files>
+	    <file>
+			<source>${project.basedir}\Agent.xmind</source>
+			<outputDirectory>\design</outputDirectory>
+		</file>
+		<file>
+			<source>${project.basedir}\readme.txt</source>
+			<outputDirectory>\</outputDirectory>
+		</file>
+	</files>  
+		
+</assembly>  

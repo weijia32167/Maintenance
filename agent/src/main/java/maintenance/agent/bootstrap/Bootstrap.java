@@ -13,6 +13,8 @@ public class Bootstrap {
 	
 	public static final Logger log = LoggerFactory.getLogger(Bootstrap.class);
 	
+	
+	
 	public static void main(String[] args) throws LifeCycleException, InterruptedException {
 		Agent agent = new Agent();
 		agent.addListener(new ILifeCycle.Listener(){

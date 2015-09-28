@@ -8,12 +8,18 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.CuratorFrameworkFactory.Builder;
 import org.apache.curator.framework.api.ACLProvider;
 import org.apache.curator.framework.api.BackgroundPathable;
+import org.apache.curator.framework.api.CuratorEvent;
+import org.apache.curator.framework.api.CuratorEventType;
+import org.apache.curator.framework.api.CuratorListener;
+import org.apache.curator.framework.api.UnhandledErrorListener;
 import org.apache.curator.framework.imps.CuratorFrameworkState;
 import org.apache.curator.framework.imps.DefaultACLProvider;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.retry.RetryNTimes;
 import org.apache.curator.utils.CloseableUtils;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +46,7 @@ public class CuratorZKClient extends AbsZKClient{
 						   .aclProvider(aclProvider)
 						   .retryPolicy(retryPolicy)
 						   .connectionTimeoutMs(5000)
-						   .sessionTimeoutMs(6000)
+						   .sessionTimeoutMs(5000)
 						   .authorization("digest", "agent".getBytes());
 		curatorFramework = builder.build();
 	}
@@ -50,18 +56,52 @@ public class CuratorZKClient extends AbsZKClient{
 		aclProvider = new DefaultACLProvider();
 		retryPolicy = new RetryNTimes(Integer.MAX_VALUE, 1000);
 		Builder builder =  CuratorFrameworkFactory.builder().
-						   connectString(Constants.DEFAULT_ZOOKEEPER_URL).
+						   connectString(Constants.DEFAULT_Register_Center).
 						   namespace(DEFAULT_NAMESPACE).
 						   aclProvider(aclProvider).
 						   retryPolicy(retryPolicy).
 						   connectionTimeoutMs(5000).
-						   sessionTimeoutMs(6000).
+						   sessionTimeoutMs(1000).
 						   authorization("digest", "agent".getBytes());
 		curatorFramework = builder.build();
 	}
 	
 
 	public void start() {
+		curatorFramework.getUnhandledErrorListenable().addListener(new UnhandledErrorListener() {
+			
+			@Override
+			public void unhandledError(String message, Throwable e) {
+				logger.info(message);
+				e.printStackTrace();
+			}
+		});
+
+		
+		
+		curatorFramework.getCuratorListenable().addListener(new CuratorListener() {
+			
+			@Override
+			public void eventReceived(CuratorFramework client, CuratorEvent event)throws Exception {
+				CuratorEventType curatorEventType = event.getType();
+				if(curatorEventType==CuratorEventType.WATCHED){
+					WatchedEvent watchEvent = event.getWatchedEvent();
+					KeeperState keeperState = watchEvent.getState();
+				}else if(curatorEventType==CuratorEventType.CLOSING){
+					client.getZookeeperClient().getZooKeeper().close();
+					//client.getZookeeperClient().close();
+					client.close();
+					logger.info("org.apache.curator.framework.imps.CuratorFrameworkState:"+client.getState().toString());
+					logger.info("org.apache.zookeeper.States:"+client.getZookeeperClient().getZooKeeper().getState().toString());
+				}else if(curatorEventType==CuratorEventType.SYNC){
+					
+				}else{
+					
+				}
+			}
+		});
+		
+		
 		curatorFramework.getConnectionStateListenable().addListener(
 				(curatorFramework,state)->{
 					if (state == ConnectionState.LOST) {
@@ -79,7 +119,7 @@ public class CuratorZKClient extends AbsZKClient{
 			try {
 				curatorFramework.blockUntilConnected();
 			} catch (InterruptedException e) {
-				CloseableUtils.closeQuietly(curatorFramework);  
+				stop();
 			}
 		}
 
@@ -95,19 +135,20 @@ public class CuratorZKClient extends AbsZKClient{
 		return curatorFramework.getState().equals(CuratorFrameworkState.STARTED);
 	}
 	
+	
+	/*List<ACL> aclList = new ArrayList<>();
+	aclList.add(new ACL(Perms.READ,Ids.AUTH_IDS));
+	aclList.add(new ACL(Perms.READ,Ids.READ_ACL_UNSAFE));
+	aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
+	aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
+	aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
+	aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
+	*/
 	public void createZnode(String path, byte[] data,CreateMode createMode) throws Exception {
 		if(isStarted()){
 			Stat stat = curatorFramework.checkExists().forPath(path);
 			if (stat == null) {
-				/*List<ACL> aclList = new ArrayList<>();
-				aclList.add(new ACL(Perms.READ,Ids.AUTH_IDS));
-				aclList.add(new ACL(Perms.READ,Ids.READ_ACL_UNSAFE));
-				aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
-				aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
-				aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
-				aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));*/
 				String operateString =curatorFramework.create().creatingParentsIfNeeded().withMode(createMode).forPath(path, data);
-				System.out.println(operateString);
 			}
 			
 			BackgroundPathable<byte[]> backgroundPathable = curatorFramework.getData().watched();

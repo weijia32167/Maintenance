@@ -8,12 +8,15 @@ public class ZookeeperConnectionStateEvent extends StateEvent<CuratorFramework, 
 
 	private static final long serialVersionUID = 5611835809299708745L;
 
-	public ZookeeperConnectionStateEvent(CuratorFramework source,ZookeeperConnectionState oldState,ZookeeperConnectionState newState, long time) {
-		super(source, oldState, newState, time);
+	public ZookeeperConnectionStateEvent(CuratorFramework source,ZookeeperConnectionState oldState) {
+		super(source, oldState);
 	}
 
-	public ZookeeperConnectionStateEvent(CuratorFramework source,ZookeeperConnectionState oldState, ZookeeperConnectionState newState) {
+	public ZookeeperConnectionStateEvent(CuratorFramework source,
+			ZookeeperConnectionState oldState, ZookeeperConnectionState newState) {
 		super(source, oldState, newState);
 	}
+
+	
 
 }

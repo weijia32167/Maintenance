@@ -29,8 +29,6 @@ public interface ILifeCycle extends IListenered<ILifeCycle.Listener>{
 	public boolean isFailed(); 
 	
 	public abstract class Listener  implements EventListener{
-		//public void LifeCycleStateChange(LifeCycleEvent event);
-		
 		
 		public abstract void trigger(LifeCycleEvent event);
 

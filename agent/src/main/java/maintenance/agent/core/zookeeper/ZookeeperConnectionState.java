@@ -4,6 +4,13 @@ import java.util.EventListener;
 
 
 public enum ZookeeperConnectionState {
+	
+	
+	INIT{
+		public boolean isConnected() {
+			return false;
+		}
+	},
 
 	CONNECTED {
 		public boolean isConnected() {

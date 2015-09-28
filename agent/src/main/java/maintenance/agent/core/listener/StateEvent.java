@@ -13,6 +13,12 @@ public abstract class StateEvent<Source,State> extends EventObject{
 	
 	protected State newState;
 	
+	public StateEvent(Source source,State oldState) {
+		super(source);
+		this.oldState = oldState;
+	}
+	
+	
 	public StateEvent(Source source,State oldState,State newState,long time) {
 		super(source);
 		this.oldState = oldState;
@@ -28,7 +34,14 @@ public abstract class StateEvent<Source,State> extends EventObject{
 	
 	@Override
 	public String toString() {
-		return "["+source+"]"+" ["+oldState +"->"+ newState + "]["+time+"ms]";
+		if(newState == null){
+			return "["+source+"]"+"["+oldState+"]";
+		}else{
+			return "["+source+"]"+" ["+oldState +"->"+ newState + "]["+time+"ms]";
+		}
+		
+		
+		
 	}
 
 }
