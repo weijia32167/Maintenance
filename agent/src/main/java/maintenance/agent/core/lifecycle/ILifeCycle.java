@@ -21,12 +21,12 @@ public interface ILifeCycle extends IListenered<ILifeCycle.Listener>{
 	
 	public void destory() throws LifeCycleException;
 	
-	public boolean isInited();
-	public boolean isStarted();     
-	public boolean isStarting();  
-	public boolean isStopping();      
-	public boolean isStopped();  
-	public boolean isFailed(); 
+	boolean isInited();
+	boolean isStarted();     
+	boolean isStarting();  
+	boolean isStopping();      
+	boolean isStopped();  
+	boolean isFailed(); 
 	
 	public abstract class Listener  implements EventListener{
 		

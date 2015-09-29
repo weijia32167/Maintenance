@@ -1,5 +1,6 @@
 package maintenance.agent.core.zookeeper;
 
+
 import maintenance.agent.conf.Constants;
 
 import org.apache.curator.RetryPolicy;
@@ -7,7 +8,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.CuratorFrameworkFactory.Builder;
 import org.apache.curator.framework.api.ACLProvider;
-import org.apache.curator.framework.api.BackgroundPathable;
 import org.apache.curator.framework.api.CuratorEvent;
 import org.apache.curator.framework.api.CuratorEventType;
 import org.apache.curator.framework.api.CuratorListener;
@@ -56,7 +56,7 @@ public class CuratorZKClient extends AbsZKClient{
 		aclProvider = new DefaultACLProvider();
 		retryPolicy = new RetryNTimes(Integer.MAX_VALUE, 1000);
 		Builder builder =  CuratorFrameworkFactory.builder().
-						   connectString(Constants.DEFAULT_Register_Center).
+						   connectString(Constants.Default_Register_Center).
 						   namespace(DEFAULT_NAMESPACE).
 						   aclProvider(aclProvider).
 						   retryPolicy(retryPolicy).
@@ -69,7 +69,6 @@ public class CuratorZKClient extends AbsZKClient{
 
 	public void start() {
 		curatorFramework.getUnhandledErrorListenable().addListener(new UnhandledErrorListener() {
-			
 			@Override
 			public void unhandledError(String message, Throwable e) {
 				logger.info(message);
@@ -78,14 +77,17 @@ public class CuratorZKClient extends AbsZKClient{
 		});
 
 		
-		
 		curatorFramework.getCuratorListenable().addListener(new CuratorListener() {
 			
 			@Override
 			public void eventReceived(CuratorFramework client, CuratorEvent event)throws Exception {
+				logger.info("abc:"+event.toString());
 				CuratorEventType curatorEventType = event.getType();
+				logger.info("abc:"+curatorEventType.toString());
+				
 				if(curatorEventType==CuratorEventType.WATCHED){
 					WatchedEvent watchEvent = event.getWatchedEvent();
+					logger.info(watchEvent.toString());
 					KeeperState keeperState = watchEvent.getState();
 				}else if(curatorEventType==CuratorEventType.CLOSING){
 					client.getZookeeperClient().getZooKeeper().close();
@@ -144,27 +146,44 @@ public class CuratorZKClient extends AbsZKClient{
 	aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
 	aclList.add(new ACL(Perms.READ,new Id("ip","192.168.12.201")));
 	*/
-	public void createZnode(String path, byte[] data,CreateMode createMode) throws Exception {
+	public ZNode getOrCreateZNode(String path, byte[] data,CreateMode createMode) throws Exception {
 		if(isStarted()){
 			Stat stat = curatorFramework.checkExists().forPath(path);
 			if (stat == null) {
-				String operateString =curatorFramework.create().creatingParentsIfNeeded().withMode(createMode).forPath(path, data);
+				curatorFramework.create().creatingParentsIfNeeded().withMode(createMode).forPath(path, data);
+				stat = curatorFramework.checkExists().forPath(path);
 			}
-			
-			BackgroundPathable<byte[]> backgroundPathable = curatorFramework.getData().watched();
-			curatorFramework.getData().usingWatcher(new RepeatWatcher(curatorFramework)).forPath(path);
+			ZNode znode = new ZNode();
+			znode.setData(data);
+			znode.setNameSpace(curatorFramework.getNamespace());
+			znode.setPath(path);
+			znode.setStat(stat);
+			znode.setAclList(curatorFramework.getACL().forPath(path));
+			return znode;
+			/*BackgroundPathable<byte[]> backgroundPathable = curatorFramework.getData().watched();
+			curatorFramework.getData().usingWatcher(new RepeatWatcher(curatorFramework)).forPath(path);*/
+		}else{
+			throw new Exception("CuratorFramework is not Started!");
 		}
 	}
 
-	public void deleteZnode(String path) throws Exception {
+	public void deleteZNode(String path) throws Exception {
 		curatorFramework.delete().forPath(path);
 	}
-
-	public static void main(String[] args) throws Exception {
-		CuratorZKClient zookeeperSupport = new CuratorZKClient("192.168.12.201:2182,192.168.12.201:2183,192.168.12.201:2181");
-		zookeeperSupport.start();
+	
+	public void setData(String path,byte[] data) throws Exception {
+		if(isStarted()){
+			curatorFramework.setData().forPath(path, data);
+		}
 	}
-
+	
+	public byte[] getData(String path) throws Exception {
+		if(isStarted()){
+			return curatorFramework.getData().forPath(path);
+		}else{
+			throw new Exception("CuratorFramework is not Started!");
+		}
+	}
 
 
 

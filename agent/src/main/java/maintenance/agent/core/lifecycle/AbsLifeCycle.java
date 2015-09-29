@@ -2,6 +2,7 @@ package maintenance.agent.core.lifecycle;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -16,28 +17,29 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 	
 	protected Logger log = LoggerFactory.getLogger(this.getClass());
 
-	protected volatile LifeCycleState state = LifeCycleState.NEW;
+	protected volatile AtomicReference<LifeCycleState> state = new AtomicReference<LifeCycleState>();
 	
 	protected EventSupport<ILifeCycle.Listener> eventSupport = new EventSupport<ILifeCycle.Listener>();
 
 	public AbsLifeCycle() {
 		super();
+		state.set(LifeCycleState.NEW);
 	}
 
 	@Override
-	public void init() throws LifeCycleException {
+	public final void init() throws LifeCycleException {
 
 		try {
 			lock.lock();
-			if (state.equals(LifeCycleState.NEW)) {
-				state = LifeCycleState.INITING;
+			if (state.get().equals(LifeCycleState.NEW)) {
+				state.compareAndSet(LifeCycleState.NEW, LifeCycleState.INITING);
 				long startTime = System.currentTimeMillis();
 				notifyListeners(new LifeCycleEvent(this,LifeCycleState.NEW,LifeCycleState.INITING));
 				doInit();
-				state = LifeCycleState.INITED;
+				state.compareAndSet(LifeCycleState.INITING, LifeCycleState.INITED);
 				long endTime = System.currentTimeMillis();
 				notifyListeners(new LifeCycleEvent(this,LifeCycleState.INITING,LifeCycleState.INITED,(endTime-startTime)));
-			}  else if (state.equals(LifeCycleState.INITING) || state.equals(LifeCycleState.INITED)) {
+			}  else if (state.get().equals(LifeCycleState.INITING) || state.equals(LifeCycleState.INITED)) {
 				init();
 			} else {
 				LifeCycleException.throwException(null,"Current LifeCycle State is :" + state.toString());
@@ -49,29 +51,29 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 	}
 
 	@Override
-	public void start() throws LifeCycleException {
+	public final void start() throws LifeCycleException {
 		try{
 			lock.lock();
-			if(state.equals(LifeCycleState.NEW)){
+			if(state.get().equals(LifeCycleState.NEW)){
 				init();
 				start();
-			}else if(state.equals(LifeCycleState.INITING)){
+			}else if(state.get().equals(LifeCycleState.INITING)){
 				start();
-			}else if(state.equals(LifeCycleState.INITED)){
-				state = LifeCycleState.STARTING;
+			}else if(state.get().equals(LifeCycleState.INITED)){
+				state.compareAndSet(LifeCycleState.INITED, LifeCycleState.STARTING);
 				long startTime = System.currentTimeMillis();
 				notifyListeners(new LifeCycleEvent(this,LifeCycleState.INITED,LifeCycleState.STARTING));
 				doStart();
 				long endTime = System.currentTimeMillis();
-				state = LifeCycleState.STARTED;
+				state.compareAndSet(LifeCycleState.STARTING, LifeCycleState.STARTED);
 				notifyListeners(new LifeCycleEvent(this,LifeCycleState.STARTING,LifeCycleState.STARTED,(endTime - startTime)));
-			}else if(state.equals(LifeCycleState.STARTED)){
+			}else if(state.get().equals(LifeCycleState.STARTED)){
 				log.debug(this+" is started!");
-			}else if(state.equals(LifeCycleState.STARTED_PAUSE)){
+			}else if(state.get().equals(LifeCycleState.STARTED_PAUSE)){
 				log.debug(this+" is paused,you can invoke resume to make it recovery!");
-			}else if(state.equals(LifeCycleState.STOPPED)){
+			}else if(state.get().equals(LifeCycleState.STOPPED)){
 				log.debug(this+" is stopped!");
-			}else if(state.equals(LifeCycleState.DESTORYED)){
+			}else if(state.get().equals(LifeCycleState.DESTORYED)){
 				log.debug(this+" is destoryed!");
 			}
 		}finally{
@@ -80,7 +82,7 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 	}
 	
 	@Override
-	public void pause() throws LifeCycleException {
+	public final void pause() throws LifeCycleException {
 		try{
 			lock.lock();
 			log.debug(this+" method is support!");
@@ -91,7 +93,7 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 	}
 
 	@Override
-	public void resume() throws LifeCycleException {
+	public final void resume() throws LifeCycleException {
 		try{
 			lock.lock();
 			log.debug(this+" method is support!");
@@ -101,28 +103,28 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 	}
 
 	@Override
-	public void stop() throws LifeCycleException {
+	public final void stop() throws LifeCycleException {
 		try{
 			lock.lock();
-			if(state.equals(LifeCycleState.NEW)){
+			if(state.get().equals(LifeCycleState.NEW)){
 				log.debug(this+" is not started,don't need stop!");
-			}else if(state.equals(LifeCycleState.INITING)){
+			}else if(state.get().equals(LifeCycleState.INITING)){
 				log.debug(this+" is not started,don't need stop!");
-			}else if(state.equals(LifeCycleState.INITED)){
+			}else if(state.get().equals(LifeCycleState.INITED)){
 				log.debug(this+" is not started,don't need stop!");
-			}else if(state.equals(LifeCycleState.STARTED)){
-				state = LifeCycleState.STOPPING;
+			}else if(state.get().equals(LifeCycleState.STARTED)){
+				state.compareAndSet(LifeCycleState.STARTED, LifeCycleState.STOPPING);
 				long startTime = System.currentTimeMillis();
 				notifyListeners(new LifeCycleEvent(this,LifeCycleState.STARTED,LifeCycleState.STOPPING));
 				doStop();
 				long endTime = System.currentTimeMillis();
-				state = LifeCycleState.STOPPED;
+				state.compareAndSet(LifeCycleState.STOPPING, LifeCycleState.STOPPED);
 				notifyListeners(new LifeCycleEvent(this,LifeCycleState.STOPPING,LifeCycleState.STOPPED,(endTime - startTime)));
-			}else if(state.equals(LifeCycleState.STARTED_PAUSE)){
+			}else if(state.get().equals(LifeCycleState.STARTED_PAUSE)){
 				log.debug(this+" is paused,you can invoke resume to make it recovery!");
-			}else if(state.equals(LifeCycleState.STOPPED)){
+			}else if(state.get().equals(LifeCycleState.STOPPED)){
 				log.debug(this+" is stopped!");
-			}else if(state.equals(LifeCycleState.DESTORYED)){
+			}else if(state.get().equals(LifeCycleState.DESTORYED)){
 				log.debug(this+" is destoryed!");
 			}
 		}finally{
@@ -133,7 +135,7 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 
 
 	@Override
-	public void destory() throws LifeCycleException {
+	public final void destory() throws LifeCycleException {
 
 	}
 
@@ -151,17 +153,17 @@ public abstract class AbsLifeCycle implements ILifeCycle{
 
 	@Override
 	public boolean isInited() {
-		return state.compareTo(LifeCycleState.INITED)==0;
+		return state.get().compareTo(LifeCycleState.INITED)==0;
 	}
 	
 	@Override
 	public boolean isStarted() {
-		return state.compareTo(LifeCycleState.STARTED) == 0;
+		return state.get().compareTo(LifeCycleState.STARTED) == 0;
 	}
 
 	@Override
 	public boolean isStarting() {
-		return state.compareTo(LifeCycleState.STARTING) == 0;
+		return state.get().compareTo(LifeCycleState.STARTING) == 0;
 	}
 
 	@Override

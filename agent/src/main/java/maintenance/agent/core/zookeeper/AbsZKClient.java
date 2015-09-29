@@ -7,7 +7,6 @@ import java.util.concurrent.ForkJoinPool;
 import maintenance.agent.core.listener.EventSupport;
 
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.imps.CuratorFrameworkState;
 
 public abstract class AbsZKClient{
 	
